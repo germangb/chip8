@@ -12,8 +12,8 @@ const MEMORY_SIZE: usize = 4096;
 #[repr(u8)]
 #[derive(Clone, Copy, Eq, PartialEq)]
 pub enum PixelState {
-    Off = 0,
-    On = 1,
+    Off = 0x0,
+    On = 0xFF,
 }
 
 impl PixelState {

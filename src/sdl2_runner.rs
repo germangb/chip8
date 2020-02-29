@@ -1,11 +1,8 @@
-use crate::{
-    cpu::{Cpu, PixelState},
-    opts::Opts,
-};
+use crate::{cpu::Cpu, opts::Opts};
 use imgui::Ui;
 use log::{error, info};
 use sdl2::audio::{AudioCallback, AudioStatus};
-use std::{error::Error, ffi::CStr, thread, time::Duration};
+use std::{error::Error, ffi::CStr, ptr, thread, time::Duration};
 use structopt::StructOpt;
 
 const SAMPLE_RATE: i32 = 44100;
@@ -110,7 +107,6 @@ where
     let mut events = Vec::new();
 
     let mut scale = 4.0;
-    let mut pixels: Box<[u8]> = vec![0x0; 64 * 32 * 3].into_boxed_slice();
     let mut texture: gl::types::GLuint = 0;
     unsafe {
         gl::GenTextures(1, &mut texture);
@@ -121,7 +117,7 @@ where
         gl::TexParameteri(gl::TEXTURE_2D, gl::TEXTURE_WRAP_T, gl::CLAMP_TO_EDGE as _);
         #[rustfmt::skip]
         gl::TexImage2D(
-            gl::TEXTURE_2D, 0, gl::RGB8 as _, 64, 32, 0, gl::RGB, gl::UNSIGNED_BYTE, pixels.as_ptr() as _);
+            gl::TEXTURE_2D, 0, gl::R8 as _, 64, 32, 0, gl::RED, gl::UNSIGNED_BYTE, ptr::null());
         gl::BindTexture(gl::TEXTURE_2D, 0);
     }
 
@@ -166,25 +162,12 @@ where
             }
         }
 
-        // update texture
-        cpu.display().iter().enumerate().for_each(|(i, p)| match p {
-            PixelState::On => {
-                pixels[3 * i + 0] = 0xFF;
-                pixels[3 * i + 1] = 0xFF;
-                pixels[3 * i + 2] = 0xFF;
-            }
-            PixelState::Off => {
-                pixels[3 * i + 0] = 0x00;
-                pixels[3 * i + 1] = 0x00;
-                pixels[3 * i + 2] = 0x00;
-            }
-        });
-
         unsafe {
+            let pixels = cpu.display().as_ptr();
             gl::BindTexture(gl::TEXTURE_2D, texture);
             #[rustfmt::skip]
             gl::TexSubImage2D(
-                gl::TEXTURE_2D, 0, 0, 0, 64, 32, gl::RGB, gl::UNSIGNED_BYTE, pixels.as_ptr() as _);
+                gl::TEXTURE_2D, 0, 0, 0, 64, 32, gl::RED, gl::UNSIGNED_BYTE, pixels as _);
             gl::BindTexture(gl::TEXTURE_2D, 0);
             gl::ClearColor(0.5, 0.5, 0.5, 1.0);
             gl::Clear(gl::COLOR_BUFFER_BIT);
