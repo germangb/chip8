@@ -1,5 +1,5 @@
 use log::info;
-use opcode::Opcode;
+pub use opcode::Opcode;
 use std::io;
 
 mod interpreter;
@@ -157,6 +157,7 @@ impl Cpu {
     }
 
     /// Set key state.
+    #[allow(dead_code)]
     pub fn set_key(&mut self, key: usize, state: KeyState) {
         self.keypad[key] = state;
         if state == KeyState::Down {
@@ -174,12 +175,20 @@ impl Cpu {
             }
             (CpuState::Halt, _) | (CpuState::WaitInput(_), _) => {}
             (CpuState::Running, _) => {
-                self.fetch_and_execute();
+                let inst = self.fetch();
+                self.execute(inst);
                 self.update_timers();
             }
         }
         // clear dynamic key events
         std::mem::replace(&mut self.keypad_event, [KeyState::Up; 16]);
+    }
+
+    /// Fetch next instruction
+    pub fn fetch(&self) -> Opcode {
+        let hi = self.memory[self.pc] as u16;
+        let lo = self.memory[self.pc + 1] as u16;
+        Opcode::from(hi << 8 | lo)
     }
 
     fn any_key_down(&self) -> Option<usize> {
@@ -201,11 +210,8 @@ impl Cpu {
         }
     }
 
-    fn fetch_and_execute(&mut self) {
-        let hi = self.memory[self.pc] as u16;
-        let lo = self.memory[self.pc + 1] as u16;
-
-        match Opcode::from(hi << 8 | lo) {
+    fn execute(&mut self, instruction: Opcode) {
+        match instruction {
             Opcode::SYS_addr(_addr) => {
                 //
                 info!("SYS instruction ignored");

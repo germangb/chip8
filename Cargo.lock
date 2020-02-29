@@ -65,6 +65,7 @@ dependencies = [
  "imgui",
  "imgui-opengl-renderer",
  "imgui-sdl2",
+ "lazy_static",
  "log",
  "rand",
  "sdl2",

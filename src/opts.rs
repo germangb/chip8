@@ -19,3 +19,10 @@ pub struct Opts {
     #[structopt(short = "f", long = "freq", default_value = "500")]
     pub beep_freq: u32,
 }
+
+impl Opts {
+    #[inline]
+    pub fn from_args() -> Self {
+        <Self as StructOpt>::from_args()
+    }
+}

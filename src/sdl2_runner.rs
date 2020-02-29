@@ -3,14 +3,9 @@ use imgui::Ui;
 use log::{error, info};
 use sdl2::audio::{AudioCallback, AudioStatus};
 use std::{error::Error, ffi::CStr, ptr, thread, time::Duration};
-use structopt::StructOpt;
 
 const SAMPLE_RATE: i32 = 44100;
 const MAX_FREQ: i32 = 2000;
-
-pub enum Event {
-    Sdl2(sdl2::event::Event),
-}
 
 struct Wave {
     rate: i32,
@@ -35,7 +30,7 @@ impl AudioCallback for Wave {
 
 pub fn run<F>(mut cpu: Cpu, mut closure: F) -> Result<(), Box<dyn Error>>
 where
-    F: FnMut(&mut Cpu, &[Event], &Ui),
+    F: FnMut(&mut Cpu, &Ui),
 {
     let opts = Opts::from_args();
 
@@ -104,7 +99,6 @@ where
         imgui_opengl_renderer::Renderer::new(&mut imgui, |s| video.gl_get_proc_address(s) as _);
 
     let mut event_pump = sdl.event_pump()?;
-    let mut events = Vec::new();
 
     let mut scale = 4.0;
     let mut texture: gl::types::GLuint = 0;
@@ -133,8 +127,6 @@ where
             }
             if imgui_sdl2.ignore_event(&event) {
                 imgui_sdl2.handle_event(&mut imgui, &event);
-            } else {
-                events.push(Event::Sdl2(event));
             }
         }
 
@@ -142,8 +134,7 @@ where
 
         let ui = imgui.frame();
 
-        closure(&mut cpu, &events[..], &ui);
-        events.clear();
+        closure(&mut cpu, &ui);
 
         if let Some(device) = &device {
             let st = cpu.sound_timer();
