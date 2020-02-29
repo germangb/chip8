@@ -2,7 +2,7 @@
 #![deny(dead_code)]
 #![deny(unused_must_use)]
 #![deny(unused_variables)]
-
+#![deny(unused_mut)]
 use crate::{cpu::Cpu, opts::Opts};
 use log::{error, info, warn};
 use std::{
