@@ -6,7 +6,9 @@ use crate::{
     cpu::{Cpu, KeyState},
     opts::Opts,
 };
-use log::{error, info};
+use log::{error, info, warn};
+use sdl2::{event::Event as SdlEvent, keyboard::Keycode};
+use sdl2_runner::Event;
 use std::{
     error::Error,
     fs,
@@ -18,7 +20,45 @@ mod cpu;
 mod opts;
 mod sdl2_runner;
 
-const CLOCK_SPEED: usize = 4;
+fn main() {
+    env_logger::init();
+
+    match run() {
+        Ok(_) => {}
+        Err(err) => {
+            error!("error = {}", err);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn run() -> Result<(), Box<dyn Error>> {
+    let opts = Opts::from_args();
+    let program = load_program()?;
+
+    sdl2_runner::run(Cpu::new(), |cpu, events, ui| {
+        for _ in 0..opts.clock {
+            cpu.step();
+        }
+
+        // for k in 0..=0xF {
+        //     cpu.set_key(k, KeyState::Up);
+        // }
+
+        for event in events {
+            if let Event::Sdl2(event) = event {
+                handle_sdl_event(event, cpu);
+            }
+        }
+
+        if let Some(k) = keypad_gui(ui) {
+            warn!("gui keypad not implemented yet");
+        }
+
+        debug_gui(ui, cpu, &program);
+    })?;
+    Ok(())
+}
 
 fn load_program() -> io::Result<Box<[u8]>> {
     let opts = Opts::from_args();
@@ -43,35 +83,25 @@ fn load_program() -> io::Result<Box<[u8]>> {
     }
 }
 
-fn run() -> Result<(), Box<dyn Error>> {
-    let program = load_program()?;
-    sdl2_runner::run(Cpu::new(), |cpu, _events, ui| {
-        for _ in 0..CLOCK_SPEED {
-            cpu.step();
-        }
-
-        for k in 0..=0xF {
-            cpu.set_key(k, KeyState::Up);
-        }
-
-        if let Some(k) = keypad_gui(ui) {
-            cpu.set_key(k, KeyState::Down);
-        }
-
-        debug_gui(ui, cpu, &program);
-    })?;
-    Ok(())
-}
-
-fn main() {
-    pretty_env_logger::init();
-
-    match run() {
-        Ok(_) => {}
-        Err(err) => {
-            error!("error = {}", err);
-            std::process::exit(1);
-        }
+fn handle_sdl_event(event: &SdlEvent, cpu: &mut Cpu) {
+    match event {
+        SdlEvent::KeyDown {
+            keycode: Some(Keycode::Q),
+            ..
+        } => cpu.set_key(0x4, KeyState::Down),
+        SdlEvent::KeyUp {
+            keycode: Some(Keycode::Q),
+            ..
+        } => cpu.set_key(0x4, KeyState::Up),
+        SdlEvent::KeyDown {
+            keycode: Some(Keycode::Num1),
+            ..
+        } => cpu.set_key(0x1, KeyState::Down),
+        SdlEvent::KeyUp {
+            keycode: Some(Keycode::Num1),
+            ..
+        } => cpu.set_key(0x1, KeyState::Up),
+        _ => {}
     }
 }
 

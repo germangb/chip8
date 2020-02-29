@@ -32,7 +32,7 @@ impl AudioCallback for Wave {
             *sample = phase.cos() * volume;
         }
         self.phase += samples.len() as i32;
-        info!("generated new audio samples = {}", samples.len());
+        //info!("generated new audio samples = {}", samples.len());
     }
 }
 
@@ -59,7 +59,7 @@ where
             info!("format = {:?}", spec.format);
             info!("buffer size (samples) = {}", spec.samples);
             info!("size = {}", spec.size);
-            let freq = (opts.beep_freq as i32).max(MAX_FREQ);
+            let freq = (opts.beep_freq as i32).min(MAX_FREQ);
             info!("wave frequency = {}", freq);
             Wave {
                 rate: spec.freq,
@@ -153,12 +153,12 @@ where
             let st = cpu.sound_timer();
             match (st, device.status()) {
                 (0, AudioStatus::Playing) => {
-                    info!("Pausing audio device");
+                    //info!("Pausing audio device");
                     device.pause()
                 }
                 (_, AudioStatus::Paused) | (_, AudioStatus::Stopped) => {
                     if st > 0 {
-                        info!("Resuming audio device");
+                        //info!("Resuming audio device");
                         device.resume()
                     }
                 }
