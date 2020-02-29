@@ -1,8 +1,8 @@
 use crate::{cpu::Cpu, opts::Opts};
-use imgui::Ui;
+use imgui::{im_str, Ui, Window};
 use log::{error, info};
 use sdl2::audio::{AudioCallback, AudioStatus};
-use std::{error::Error, ffi::CStr, ptr, thread, time::Duration};
+use std::{error::Error, ffi::CStr, ptr};
 
 const SAMPLE_RATE: i32 = 44100;
 const MAX_FREQ: i32 = 2000;
@@ -24,7 +24,6 @@ impl AudioCallback for Wave {
             *sample = phase.cos() * volume;
         }
         self.phase += samples.len() as i32;
-        //info!("generated new audio samples = {}", samples.len());
     }
 }
 
@@ -33,10 +32,11 @@ where
     F: FnMut(&mut Cpu, &Ui),
 {
     let opts = Opts::from_args();
+    let app = imgui_very_quick::builder()
+        .position_centered()
+        .background(0.5, 0.5, 0.5, 1.0)
+        .build()?;
 
-    let sdl = sdl2::init()?;
-
-    let video = sdl.video()?;
     let audio_spec = sdl2::audio::AudioSpecDesired {
         freq: Some(SAMPLE_RATE),
         channels: Some(1),
@@ -44,7 +44,7 @@ where
     };
     let device = if !opts.no_sound {
         info!("initializing SDL audio device");
-        let audio = sdl.audio()?;
+        let audio = app.sdl().audio()?;
         let device = audio.open_playback(None, &audio_spec, |spec| {
             info!("sampling rate = {}", spec.freq);
             info!("channels = {}", spec.channels);
@@ -59,7 +59,6 @@ where
                 phase: 0,
             }
         });
-
         match device {
             Ok(device) => Some(device),
             Err(err) => {
@@ -71,34 +70,8 @@ where
         None
     };
 
-    let window = video
-        .window("CHIP-8", 640, 480)
-        .opengl()
-        .position_centered()
-        .resizable()
-        .build()?;
-
-    info!("initializing OpenGL");
-    let opengl_context = window.gl_create_context()?;
-    window.gl_make_current(&opengl_context)?;
-    gl::load_with(|s| video.gl_get_proc_address(s) as _);
-    unsafe {
-        #[rustfmt::skip]
-        info!("GL_VENDOR = {:?}", CStr::from_ptr(gl::GetString(gl::VENDOR) as *const i8));
-        #[rustfmt::skip]
-        info!("GL_RENDERER = {:?}", CStr::from_ptr(gl::GetString(gl::RENDERER) as *const i8));
-        #[rustfmt::skip]
-        info!("GL_VERSION = {:?}", CStr::from_ptr(gl::GetString(gl::VERSION) as *const i8));
-        #[rustfmt::skip]
-        info!("GL_SHADING_LANGUAGE_VERSION = {:?}", CStr::from_ptr(gl::GetString(gl::SHADING_LANGUAGE_VERSION) as *const i8));
-    }
-
-    let mut imgui = imgui::Context::create();
-    let mut imgui_sdl2 = imgui_sdl2::ImguiSdl2::new(&mut imgui, &window);
-    let imgui_opengl =
-        imgui_opengl_renderer::Renderer::new(&mut imgui, |s| video.gl_get_proc_address(s) as _);
-
-    let mut event_pump = sdl.event_pump()?;
+    gl::load_with(|s| app.gl_get_proc_addr(s) as _);
+    log_gl();
 
     let mut scale = 4.0;
     let mut texture: gl::types::GLuint = 0;
@@ -115,37 +88,14 @@ where
         gl::BindTexture(gl::TEXTURE_2D, 0);
     }
 
-    'mainLoop: loop {
-        for event in event_pump.poll_iter() {
-            use sdl2::event::{Event as Sdl2Event, WindowEvent};
-            if let Sdl2Event::Window {
-                win_event: WindowEvent::Close,
-                ..
-            } = &event
-            {
-                break 'mainLoop;
-            }
-            if imgui_sdl2.ignore_event(&event) {
-                imgui_sdl2.handle_event(&mut imgui, &event);
-            }
-        }
-
-        imgui_sdl2.prepare_frame(imgui.io_mut(), &window, &event_pump.mouse_state());
-
-        let ui = imgui.frame();
-
-        closure(&mut cpu, &ui);
-
+    app.run(|ui| {
+        // update audio
         if let Some(device) = &device {
             let st = cpu.sound_timer();
             match (st, device.status()) {
-                (0, AudioStatus::Playing) => {
-                    //info!("Pausing audio device");
-                    device.pause()
-                }
+                (0, AudioStatus::Playing) => device.pause(),
                 (_, AudioStatus::Paused) | (_, AudioStatus::Stopped) => {
                     if st > 0 {
-                        //info!("Resuming audio device");
                         device.resume()
                     }
                 }
@@ -153,24 +103,22 @@ where
             }
         }
 
+        // update texture
         unsafe {
             let pixels = cpu.display().as_ptr();
             gl::BindTexture(gl::TEXTURE_2D, texture);
             #[rustfmt::skip]
-            gl::TexSubImage2D(
+                gl::TexSubImage2D(
                 gl::TEXTURE_2D, 0, 0, 0, 64, 32, gl::RED, gl::UNSIGNED_BYTE, pixels as _);
             gl::BindTexture(gl::TEXTURE_2D, 0);
-            gl::ClearColor(0.5, 0.5, 0.5, 1.0);
-            gl::Clear(gl::COLOR_BUFFER_BIT);
         }
 
-        use imgui::{im_str, Window};
+        closure(&mut cpu, &ui);
 
         // texture window
         Window::new(im_str!("Display"))
             .always_auto_resize(true)
             .resizable(false)
-            //.title_bar(false)
             .build(&ui, || {
                 imgui::Image::new(
                     imgui::TextureId::from(texture as usize),
@@ -196,16 +144,25 @@ where
                 }
             });
 
-        imgui_sdl2.prepare_render(&ui, &window);
-        imgui_opengl.render(ui);
-
-        window.gl_swap_window();
-        thread::sleep(Duration::new(0, 1_000_000_000 / 60));
-    }
+        Ok(())
+    })?;
 
     unsafe {
         gl::DeleteTextures(1, &mut texture);
     }
 
     Ok(())
+}
+
+fn log_gl() {
+    unsafe {
+        #[rustfmt::skip]
+        info!("GL_VENDOR = {:?}", CStr::from_ptr(gl::GetString(gl::VENDOR) as *const i8));
+        #[rustfmt::skip]
+        info!("GL_RENDERER = {:?}", CStr::from_ptr(gl::GetString(gl::RENDERER) as *const i8));
+        #[rustfmt::skip]
+        info!("GL_VERSION = {:?}", CStr::from_ptr(gl::GetString(gl::VERSION) as *const i8));
+        #[rustfmt::skip]
+        info!("GL_SHADING_LANGUAGE_VERSION = {:?}", CStr::from_ptr(gl::GetString(gl::SHADING_LANGUAGE_VERSION) as *const i8));
+    }
 }

@@ -17,8 +17,13 @@ mod sdl2_runner;
 mod ui;
 
 struct App {
-    /// CPU running
     pub running: bool,
+    pub speed: usize,
+    pub display: bool,
+    pub keypad: bool,
+    pub debug: bool,
+    pub memory: bool,
+    pub registers: bool,
 }
 
 fn main() {
@@ -36,29 +41,66 @@ fn main() {
 fn run() -> Result<(), Box<dyn Error>> {
     let opts = Opts::from_args();
     let program = load_program()?;
-    let mut app = App { running: true };
+    let mut app = App {
+        running: true,
+        speed: opts.clock,
+        display: true,
+        keypad: true,
+        debug: true,
+        memory: true,
+        registers: true,
+    };
 
     sdl2_runner::run(Cpu::new(), |cpu, ui| {
         if app.running {
-            for _ in 0..opts.clock {
+            for _ in 0..app.speed {
                 cpu.step();
             }
         }
 
-        if let Some(_key) = ui::keypad::draw(ui) {
-            warn!("gui keypad not implemented yet");
-        }
-
         ui.main_menu_bar(|| {
             ui.menu(imgui::im_str!("App"), true, || {
+                ui.checkbox(imgui::im_str!("Display"), &mut app.display);
+                ui.checkbox(imgui::im_str!("Keypad"), &mut app.keypad);
+                ui.checkbox(imgui::im_str!("Memory"), &mut app.memory);
+                ui.checkbox(imgui::im_str!("Debug"), &mut app.debug);
+                ui.checkbox(imgui::im_str!("Registers"), &mut app.registers);
+            });
+            ui.menu(imgui::im_str!("Chip-8"), true, || {
+                let mut speed = app.speed as _;
                 ui.checkbox(imgui::im_str!("Running"), &mut app.running);
+                ui.input_int(imgui::im_str!("Speed"), &mut speed)
+                    .step(1)
+                    .build();
+                app.speed = speed as _;
+            });
+            ui.menu(imgui::im_str!("Rom"), true, || {
+                if ui.small_button(imgui::im_str!("Load")) {
+                    cpu.load(&program);
+                }
+                if ui.small_button(imgui::im_str!("Halt")) {
+                    cpu.halt();
+                }
+                if ui.small_button(imgui::im_str!("Reset")) {
+                    cpu.reset();
+                }
             });
         });
 
-        ui::debug::draw(ui, cpu);
-        ui::memory::draw(ui, cpu);
-
-        ui::debug_gui(ui, cpu, &program);
+        if app.keypad {
+            if let Some(_key) = ui::keypad::draw(ui) {
+                warn!("gui keypad not implemented yet");
+            }
+        }
+        if app.debug {
+            ui::debug::draw(ui, cpu);
+        }
+        if app.memory {
+            ui::memory::draw(ui, cpu);
+        }
+        if app.registers {
+            ui::registers::draw(ui, cpu);
+        }
     })?;
     Ok(())
 }

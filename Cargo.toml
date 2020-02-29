@@ -17,3 +17,6 @@ log = "0.4.8"
 env_logger = "0.7.1"
 structopt = "0.3.9"
 lazy_static = "1.4.0"
+
+[dependencies.imgui_very_quick]
+git = "https://github.com/germangb/imgui_very_quick.git"
