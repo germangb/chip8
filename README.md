@@ -1,6 +1,16 @@
 # chip8 interpreter
 
-A [**chip8**](https://en.wikipedia.org/wiki/CHIP-8) interpreter in Rust.
+A [**chip8**](https://en.wikipedia.org/wiki/CHIP-8) interpreter in Rust, with some debug features.
+
+## Running
+
+Set up the stable Rust toolchain and all that.
+
+```bash
+RUST_LOG=trace cargo run -- --rom <rom_path>
+```
+
+## Help
 
 ```
 chip8 0.1.0
