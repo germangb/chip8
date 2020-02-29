@@ -2,7 +2,10 @@
 #![deny(dead_code)]
 #![deny(unused_must_use)]
 
-use crate::{opts::Opts, Cpu, KeyState};
+use crate::{
+    cpu::{Cpu, KeyState},
+    opts::Opts,
+};
 use log::{error, info};
 use std::{
     error::Error,
