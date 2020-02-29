@@ -1,27 +1,91 @@
-use crate::cpu::{Cpu, PixelState};
+use crate::{
+    cpu::{Cpu, PixelState},
+    opts::Opts,
+};
 use imgui::Ui;
-use std::{thread, time, time::Duration};
+use log::{error, info};
+use sdl2::audio::{AudioCallback, AudioStatus};
+use std::{error::Error, thread, time, time::Duration};
+use structopt::StructOpt;
+
+// beep frequency (Hz)
+const TONE_FREQ: i32 = 500;
 
 pub enum Event {
     Sdl2(sdl2::event::Event),
 }
 
-pub fn run<F>(mut cpu: Cpu, mut closure: F)
+struct Wave {
+    rate: i32,
+    freq: i32,
+    phase: i32,
+}
+
+impl AudioCallback for Wave {
+    type Channel = f32;
+    fn callback(&mut self, samples: &mut [Self::Channel]) {
+        let volume = 0.5;
+        for (i, sample) in samples.iter_mut().enumerate() {
+            #[allow(non_snake_case)]
+            let F = (self.freq as f32) / (self.rate as f32);
+            let phase = 2.0 * 3.14159265 * F * (self.phase as usize + i) as f32;
+            *sample = (phase.cos() * volume);
+        }
+        self.phase += samples.len() as i32;
+        info!("generated new audio samples = {}", samples.len());
+    }
+}
+
+pub fn run<F>(mut cpu: Cpu, mut closure: F) -> Result<(), Box<dyn Error>>
 where
     F: FnMut(&mut Cpu, &[Event], &Ui),
 {
-    let sdl = sdl2::init().unwrap();
-    let video = sdl.video().unwrap();
+    let opts = Opts::from_args();
+
+    let sdl = sdl2::init()?;
+
+    let video = sdl.video()?;
+    let audio_spec = sdl2::audio::AudioSpecDesired {
+        freq: opts.beep_freq.map(|s| s as i32),
+        channels: Some(1),
+        samples: None,
+    };
+    let device = if !opts.no_sound {
+        info!("initializing SDL audio device");
+        let audio = sdl.audio()?;
+        let device = audio.open_playback(None, &audio_spec, |spec| {
+            info!("sampling rate = {}", spec.freq);
+            info!("channels = {}", spec.channels);
+            info!("format = {:?}", spec.format);
+            info!("buffer size (samples) = {}", spec.samples);
+            info!("size = {}", spec.size);
+            Wave {
+                rate: spec.freq,
+                freq: TONE_FREQ,
+                phase: 0,
+            }
+        });
+
+        match device {
+            Ok(device) => Some(device),
+            Err(err) => {
+                error!("failed to initialize audio device = {}", err);
+                None
+            }
+        }
+    } else {
+        None
+    };
+
     let window = video
         .window("CHIP-8", 640, 480)
         .opengl()
         .position_centered()
         .resizable()
-        .build()
-        .unwrap();
+        .build()?;
 
-    let opengl_context = window.gl_create_context().unwrap();
-    window.gl_make_current(&opengl_context).unwrap();
+    let opengl_context = window.gl_create_context()?;
+    window.gl_make_current(&opengl_context)?;
 
     gl::load_with(|s| video.gl_get_proc_address(s) as _);
 
@@ -30,10 +94,10 @@ where
     let mut imgui_opengl =
         imgui_opengl_renderer::Renderer::new(&mut imgui, |s| video.gl_get_proc_address(s) as _);
 
-    let mut event_pump = sdl.event_pump().unwrap();
+    let mut event_pump = sdl.event_pump()?;
     let mut events = Vec::new();
 
-    let mut scale = 8.0;
+    let mut scale = 4.0;
     let mut pixels: Box<[u8]> = vec![0x0; 64 * 32 * 3].into_boxed_slice();
     let mut texture: gl::types::GLuint = 0;
     unsafe {
@@ -73,6 +137,23 @@ where
         closure(&mut cpu, &events[..], &ui);
         events.clear();
 
+        if let Some(device) = &device {
+            let st = cpu.sound_timer();
+            match (st, device.status()) {
+                (0, AudioStatus::Playing) => {
+                    info!("Pausing audio device");
+                    device.pause()
+                }
+                (_, AudioStatus::Paused) | (_, AudioStatus::Stopped) => {
+                    if st > 0 {
+                        info!("Resuming audio device");
+                        device.resume()
+                    }
+                }
+                _ => {}
+            }
+        }
+
         // update texture
         cpu.display().iter().enumerate().for_each(|(i, p)| match p {
             PixelState::On => {
@@ -97,23 +178,37 @@ where
             gl::Clear(gl::COLOR_BUFFER_BIT);
         }
 
+        use imgui::{im_str, Window};
+
         // texture window
-        #[rustfmt::skip]
-        imgui::Window::new(imgui::im_str!("Display"))
+        Window::new(im_str!("Display"))
             .always_auto_resize(true)
             .resizable(false)
+            //.title_bar(false)
             .build(&ui, || {
-            imgui::Image::new(
-                imgui::TextureId::from(texture as usize),
-                [64.0 * scale, 32.0 * scale],
-            )
-            .border_col([1.0; 4])
-            .build(&ui);
-            if ui.small_button(imgui::im_str!("x1")) { scale = 1.0 }
-            if ui.small_button(imgui::im_str!("x2")) { scale = 2.0 }
-            if ui.small_button(imgui::im_str!("x4")) { scale = 4.0 }
-            if ui.small_button(imgui::im_str!("x8")) { scale = 8.0 }
-        });
+                imgui::Image::new(
+                    imgui::TextureId::from(texture as usize),
+                    [64.0 * scale, 32.0 * scale],
+                )
+                .border_col([1.0; 4])
+                .build(&ui);
+
+                let scales = [1.0, 2.0, 4.0, 8.0, 16.0];
+                let label = [
+                    im_str!("x1"),
+                    im_str!("x2"),
+                    im_str!("x4"),
+                    im_str!("x8"),
+                    im_str!("x16"),
+                ];
+                let [x, y] = ui.cursor_pos();
+                for i in 0..4 {
+                    ui.set_cursor_pos([x + 28.0 * (i as f32), y]);
+                    if ui.button(label[i], [24.0, 24.0]) {
+                        scale = scales[i];
+                    }
+                }
+            });
 
         imgui_sdl2.prepare_render(&ui, &window);
         imgui_opengl.render(ui);
@@ -125,4 +220,6 @@ where
     unsafe {
         gl::DeleteTextures(1, &mut texture);
     }
+
+    Ok(())
 }

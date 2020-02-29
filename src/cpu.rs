@@ -1,7 +1,9 @@
-use crate::cpu::opcode::Opcode;
-use std::io::{self, Read};
-use std::mem;
-use std::thread::current;
+use log::info;
+use opcode::Opcode;
+use std::{
+    io::{self, Read},
+    mem,
+};
 
 mod interpreter;
 mod opcode;
@@ -56,13 +58,9 @@ pub enum CpuState {
 pub struct Cpu {
     registers: [u8; 16],
     i: u16,
-    /// stack pointer
     sp: usize,
-    /// program counter
     pc: usize,
-    /// delay timer
     dt: usize,
-    /// sound timer
     st: usize,
     stack: [u16; 16],
     memory: [u8; MEMORY_SIZE],
@@ -177,7 +175,10 @@ impl Cpu {
                 self.state = CpuState::Running;
             }
             (CpuState::Halt, _) | (CpuState::WaitInput(_), _) => {}
-            (CpuState::Running, _) => self.fetch_and_execute(),
+            (CpuState::Running, _) => {
+                self.fetch_and_execute();
+                self.update_timers();
+            }
         }
         // clear dynamic key events
         std::mem::replace(&mut self.keypad_event, [KeyState::Up; 16]);
@@ -193,34 +194,34 @@ impl Cpu {
         })
     }
 
+    fn update_timers(&mut self) {
+        if self.dt > 0 {
+            self.dt -= 1;
+        }
+        if self.st > 0 {
+            self.st -= 1;
+        }
+    }
+
     fn fetch_and_execute(&mut self) {
-        assert_eq!(0, self.pc % 2);
-        let bytecode = ((self.memory[self.pc] as u16) << 8) | (self.memory[self.pc + 1] as u16);
+        let hi = self.memory[self.pc] as u16;
+        let lo = self.memory[self.pc + 1] as u16;
 
-        // println!("---");
-        // println!("PC = {}", self.pc);
-        // println!("V  = {:?}", self.registers);
-        // println!("I  = {}", self.i);
-        // println!("BT = {:#X} {:#X} = {:#X}", self.memory[self.pc], self.memory[self.pc+1], bytecode);
-
-        let opcode = Opcode::from(bytecode);
-        //println!("OP = {:?}", opcode);
-
-        match opcode {
-            Opcode::SYS_addr(_addr) => unimplemented!(),
+        match Opcode::from(hi << 8 | lo) {
+            Opcode::SYS_addr(_addr) => {
+                //
+                info!("SYS instruction ignored");
+            }
             Opcode::CLS => self.clear_display(),
             Opcode::RET => {
                 self.pc = self.stack[self.sp] as usize;
                 self.sp -= 1;
             }
-            Opcode::JP_addr(addr) => {
-                //if addr == self.pc { panic!(); }
-                self.pc = addr as usize - 2
-            }
+            Opcode::JP_addr(addr) => self.pc = addr as usize - 2,
             Opcode::CALL_addr(addr) => {
                 self.sp += 1;
                 self.stack[self.sp as usize] = self.pc as u16;
-                self.pc = addr;
+                self.pc = addr - 2;
             }
             Opcode::SE_Vx_byte(x, b) => {
                 if self.registers[x] == b {
@@ -238,7 +239,11 @@ impl Cpu {
                 }
             }
             Opcode::LD_Vx_byte(x, b) => self.registers[x] = b,
-            Opcode::ADD_Vx_byte(x, b) => self.registers[x] += b,
+            Opcode::ADD_Vx_byte(x, b) => {
+                let tmp = self.registers[x] as u64;
+                self.registers[x] = ((tmp + b as u64) & 0xFF) as u8;
+                //self.registers[x] += b
+            }
             Opcode::LD_Vx_Vy(x, y) => self.registers[x] = self.registers[y],
             Opcode::OR_Vx_Vy(x, y) => self.registers[x] |= self.registers[y],
             Opcode::AND_Vx_Vy(x, y) => self.registers[x] &= self.registers[y],
@@ -285,12 +290,12 @@ impl Cpu {
             Opcode::DRW_Vx_Vy_nibble(x, y, nibble) => self.drw_x_y_nibble(x, y, nibble),
             Opcode::SKP_Vx(x) => {
                 if self.keypad[self.registers[x] as usize] == KeyState::Down {
-                    self.sp += 2;
+                    self.pc += 2;
                 }
             }
             Opcode::SKNP_Vx(x) => {
                 if self.keypad[self.registers[x] as usize] == KeyState::Up {
-                    self.sp += 2;
+                    self.pc += 2;
                 }
             }
             Opcode::LD_Vx_DT(x) => self.registers[x] = self.dt as _,
@@ -298,7 +303,7 @@ impl Cpu {
             Opcode::LD_DT_Vx(x) => self.dt = self.registers[x] as _,
             Opcode::LD_ST_Vx(x) => self.st = self.registers[x] as _,
             Opcode::ADD_I_Vx(x) => self.i += self.registers[x] as u16,
-            Opcode::LD_F_Vx(x) => self.i = interpreter::FONT_ADDR[self.registers[x] as usize],
+            Opcode::LD_F_Vx(x) => self.i = interpreter::sprite_addr(self.registers[x]),
             Opcode::LD_B_Vx(x) => {
                 let digit = self.registers[x] as u32;
                 self.memory[self.i as usize + 0] = (digit % 1000) as u8;
