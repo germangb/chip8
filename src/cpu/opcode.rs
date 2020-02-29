@@ -73,10 +73,10 @@ pub enum Opcode {
     LD_Vx_I(usize),
 }
 
-#[inline]
-fn dec_xy_(op: u16) -> (usize, usize) {
-    (((op >> 8) & 0xF) as usize, ((op >> 4) / 0xF) as usize)
-}
+// #[inline]
+// fn dec_xy_(op: u16) -> (usize, usize) {
+//     (((op >> 8) & 0xF) as usize, ((op >> 4) / 0xF) as usize)
+// }
 
 #[inline]
 fn dec_xkk(op: u16) -> (usize, u8) {
@@ -88,10 +88,10 @@ fn dec_nnn(op: u16) -> usize {
     (op & 0xFFF) as usize
 }
 
-#[inline]
-fn dec_x__(op: u16) -> usize {
-    ((op >> 8) & 0xF) as usize
-}
+// #[inline]
+// fn dec_x__(op: u16) -> usize {
+//     ((op >> 8) & 0xF) as usize
+// }
 
 #[inline]
 fn dec_xyn(op: u16) -> (usize, usize, u8) {

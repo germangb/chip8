@@ -1,9 +1,6 @@
 use log::info;
 use opcode::Opcode;
-use std::{
-    io::{self, Read},
-    mem,
-};
+use std::io;
 
 mod interpreter;
 mod opcode;
@@ -150,6 +147,7 @@ impl Cpu {
     }
 
     /// Return memory
+    #[allow(dead_code)]
     pub fn memory(&self) -> &[u8; 4096] {
         &self.memory
     }
@@ -263,7 +261,7 @@ impl Cpu {
                     self.registers[0xF] = 0;
                 }
             }
-            Opcode::SHR_Vx_Vy(x, y) => {
+            Opcode::SHR_Vx_Vy(x, _y) => {
                 self.registers[0xF] = self.registers[x] & 1;
                 self.registers[x] >>= 1;
             }
@@ -275,8 +273,8 @@ impl Cpu {
                     self.registers[0xF] = 0;
                 }
             }
-            Opcode::SHL_Vx_Vy(x, y) => {
-                self.registers[0xF] = (self.registers[x] >> 7);
+            Opcode::SHL_Vx_Vy(x, _y) => {
+                self.registers[0xF] = self.registers[x] >> 7;
                 self.registers[x] <<= 1;
             }
             Opcode::SNE_Vx_Vy(x, y) => {

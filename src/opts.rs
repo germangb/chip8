@@ -12,6 +12,6 @@ pub struct Opts {
     pub rom: Option<String>,
 
     /// Sound frequency
-    #[structopt(short = "f", long = "freq")]
-    pub beep_freq: Option<u32>,
+    #[structopt(short = "f", long = "freq", default_value = "500")]
+    pub beep_freq: u32,
 }

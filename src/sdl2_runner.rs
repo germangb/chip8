@@ -5,11 +5,11 @@ use crate::{
 use imgui::Ui;
 use log::{error, info};
 use sdl2::audio::{AudioCallback, AudioStatus};
-use std::{error::Error, thread, time, time::Duration};
+use std::{error::Error, ffi::CStr, thread, time::Duration};
 use structopt::StructOpt;
 
-// beep frequency (Hz)
-const TONE_FREQ: i32 = 500;
+const SAMPLE_RATE: i32 = 44100;
+const MAX_FREQ: i32 = 2000;
 
 pub enum Event {
     Sdl2(sdl2::event::Event),
@@ -29,7 +29,7 @@ impl AudioCallback for Wave {
             #[allow(non_snake_case)]
             let F = (self.freq as f32) / (self.rate as f32);
             let phase = 2.0 * 3.14159265 * F * (self.phase as usize + i) as f32;
-            *sample = (phase.cos() * volume);
+            *sample = phase.cos() * volume;
         }
         self.phase += samples.len() as i32;
         info!("generated new audio samples = {}", samples.len());
@@ -46,7 +46,7 @@ where
 
     let video = sdl.video()?;
     let audio_spec = sdl2::audio::AudioSpecDesired {
-        freq: opts.beep_freq.map(|s| s as i32),
+        freq: Some(SAMPLE_RATE),
         channels: Some(1),
         samples: None,
     };
@@ -59,9 +59,11 @@ where
             info!("format = {:?}", spec.format);
             info!("buffer size (samples) = {}", spec.samples);
             info!("size = {}", spec.size);
+            let freq = (opts.beep_freq as i32).max(MAX_FREQ);
+            info!("wave frequency = {}", freq);
             Wave {
                 rate: spec.freq,
-                freq: TONE_FREQ,
+                freq,
                 phase: 0,
             }
         });
@@ -84,14 +86,24 @@ where
         .resizable()
         .build()?;
 
+    info!("initializing OpenGL");
     let opengl_context = window.gl_create_context()?;
     window.gl_make_current(&opengl_context)?;
-
     gl::load_with(|s| video.gl_get_proc_address(s) as _);
+    unsafe {
+        #[rustfmt::skip]
+        info!("GL_VENDOR = {:?}", CStr::from_ptr(gl::GetString(gl::VENDOR) as *const i8));
+        #[rustfmt::skip]
+        info!("GL_RENDERER = {:?}", CStr::from_ptr(gl::GetString(gl::RENDERER) as *const i8));
+        #[rustfmt::skip]
+        info!("GL_VERSION = {:?}", CStr::from_ptr(gl::GetString(gl::VERSION) as *const i8));
+        #[rustfmt::skip]
+        info!("GL_SHADING_LANGUAGE_VERSION = {:?}", CStr::from_ptr(gl::GetString(gl::SHADING_LANGUAGE_VERSION) as *const i8));
+    }
 
     let mut imgui = imgui::Context::create();
     let mut imgui_sdl2 = imgui_sdl2::ImguiSdl2::new(&mut imgui, &window);
-    let mut imgui_opengl =
+    let imgui_opengl =
         imgui_opengl_renderer::Renderer::new(&mut imgui, |s| video.gl_get_proc_address(s) as _);
 
     let mut event_pump = sdl.event_pump()?;

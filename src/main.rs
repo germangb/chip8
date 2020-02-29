@@ -1,9 +1,9 @@
-use crate::{
-    cpu::{Cpu, KeyState},
-    opts::Opts,
-};
+#![deny(unused_imports)]
+#![deny(dead_code)]
+#![deny(unused_must_use)]
+
+use crate::{opts::Opts, Cpu, KeyState};
 use log::{error, info};
-use sdl2::keyboard::Keycode;
 use std::{
     error::Error,
     fs,
@@ -42,8 +42,7 @@ fn load_program() -> io::Result<Box<[u8]>> {
 
 fn run() -> Result<(), Box<dyn Error>> {
     let program = load_program()?;
-    let mut cpu = Cpu::new();
-    sdl2_runner::run(cpu, |cpu, events, ui| {
+    sdl2_runner::run(Cpu::new(), |cpu, _events, ui| {
         for _ in 0..CLOCK_SPEED {
             cpu.step();
         }
@@ -57,7 +56,7 @@ fn run() -> Result<(), Box<dyn Error>> {
         }
 
         debug_gui(ui, cpu, &program);
-    });
+    })?;
     Ok(())
 }
 
