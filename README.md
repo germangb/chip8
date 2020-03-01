@@ -9,7 +9,7 @@ A [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) interpreter in rust, with some 
 Running the SDL-based interpreter:
 
 ```bash
-$ RUST_LOG=trace cargo run --package chip8-sdl -- --rom "<rom_path>"
+$ RUST_LOG=trace cargo run --package chip8-sdl -- --rom "roms/Trip8 Demo (2008) [Revival Studios].ch8"
 ```
 
 ## WebAssembly
