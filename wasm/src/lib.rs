@@ -1,7 +1,7 @@
 use chip8::cpu::PixelState;
 use wasm_bindgen::prelude::*;
 
-const ROM: &[u8] = include_bytes!("../Trip8 Demo (2008) [Revival Studios].ch8");
+const ROM: &[u8] = include_bytes!("../roms/Trip8 Demo (2008) [Revival Studios].ch8");
 
 #[wasm_bindgen]
 pub struct Cpu(chip8::cpu::Cpu);
