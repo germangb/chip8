@@ -10,8 +10,11 @@ pub fn draw(ui: &Ui, cpu: &mut Cpu) {
     }
 
     Window::new(im_str!("Debugger")).build(ui, || {
+        if ui.small_button(im_str!("Halt")) {
+            cpu.halt();
+        }
         if ui.small_button(im_str!("Step")) {
-            cpu.step();
+            cpu.fetch_execute();
         }
         if ui.small_button(im_str!("Fetch instruction")) {
             let op = cpu.fetch();

@@ -1,5 +1,5 @@
 pub use opcode::Opcode;
-use std::io;
+use std::{io, mem};
 
 mod interpreter;
 mod opcode;
@@ -41,7 +41,7 @@ pub enum KeyState {
     Down = 1,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum CpuState {
     /// Not running
     Halt,
@@ -103,18 +103,22 @@ impl Cpu {
         &self.registers
     }
 
+    /// Return the value of the PC register.
     pub fn program_counter(&self) -> usize {
         self.pc
     }
 
+    /// Return the value of the ST register.
     pub fn stack_pointer(&self) -> usize {
         self.sp
     }
 
+    /// Return the value of the DT register.
     pub fn delay_timer(&self) -> usize {
         self.dt
     }
 
+    /// Return the value of the ST register.
     pub fn sound_timer(&self) -> usize {
         self.st
     }
@@ -123,6 +127,7 @@ impl Cpu {
         &self.stack
     }
 
+    /// Return the value of the I register.
     pub fn i(&self) -> u16 {
         self.i
     }
@@ -142,21 +147,20 @@ impl Cpu {
 
     /// Resets the cpu.
     pub fn reset(&mut self) {
-        std::mem::replace(self, Default::default());
+        mem::replace(self, Default::default());
     }
 
     /// Return memory
-    #[allow(dead_code)]
     pub fn memory(&self) -> &[u8; 4096] {
         &self.memory
     }
 
+    /// Returns the current state of the display.
     pub fn display(&self) -> &[PixelState; DISPLAY_SIZE] {
         &self.display
     }
 
     /// Set key state.
-    #[allow(dead_code)]
     pub fn set_key(&mut self, key: usize, state: KeyState) {
         self.keypad[key] = state;
         if state == KeyState::Down {
@@ -164,7 +168,8 @@ impl Cpu {
         }
     }
 
-    /// Step the simulation.
+    /// If the cpu is not halted or waiting for use input, decodes the next
+    /// instruction, runs it, and updates the timer registers.
     pub fn step(&mut self) {
         let key_down = self.any_key_down();
         match (&self.state, key_down) {
@@ -173,17 +178,14 @@ impl Cpu {
                 self.state = CpuState::Running;
             }
             (CpuState::Halt, _) | (CpuState::WaitInput(_), _) => {}
-            (CpuState::Running, _) => {
-                let inst = self.fetch();
-                self.execute(inst);
-                self.update_timers();
-            }
+            (CpuState::Running, _) => self.fetch_execute(),
         }
         // clear dynamic key events
-        std::mem::replace(&mut self.keypad_event, [KeyState::Up; 16]);
+        mem::replace(&mut self.keypad_event, [KeyState::Up; 16]);
     }
 
-    /// Fetch next instruction
+    /// Decodes the instruction located at the current position of the program
+    /// counter without running it.
     pub fn fetch(&self) -> Opcode {
         let hi = self.memory[self.pc] as u16;
         let lo = self.memory[self.pc + 1] as u16;
@@ -200,7 +202,14 @@ impl Cpu {
         })
     }
 
-    fn update_timers(&mut self) {
+    /// Decodes the next instruction and runs it.
+    pub fn fetch_execute(&mut self) {
+        let instruction = self.fetch();
+        self.execute(instruction);
+    }
+
+    /// Decrement sound timer (ST) and delay timer (DT) registers.
+    pub fn update_timers(&mut self) {
         if self.dt > 0 {
             self.dt -= 1;
         }
@@ -330,7 +339,7 @@ impl Cpu {
     }
 
     fn clear_display(&mut self) {
-        std::mem::replace(&mut self.display, [PixelState::Off; 64 * 32]);
+        mem::replace(&mut self.display, [PixelState::Off; 64 * 32]);
     }
 
     fn drw_x_y_nibble(&mut self, x: usize, y: usize, nibble: u8) {

@@ -5,6 +5,7 @@
 #![deny(unused_mut)]
 use crate::opts::Opts;
 use chip8::cpu::Cpu;
+use imgui::MenuItem;
 use log::{error, info, warn};
 use std::{
     error::Error,
@@ -17,8 +18,6 @@ mod sdl2_runner;
 mod ui;
 
 struct App {
-    pub running: bool,
-    pub speed: usize,
     pub display: bool,
     pub keypad: bool,
     pub debug: bool,
@@ -40,10 +39,9 @@ fn main() {
 
 fn run() -> Result<(), Box<dyn Error>> {
     let opts = Opts::from_args();
-    let program = load_program()?;
+
+    let program = load_program(&opts.rom)?;
     let mut app = App {
-        running: true,
-        speed: opts.clock,
         display: true,
         keypad: true,
         debug: true,
@@ -52,12 +50,6 @@ fn run() -> Result<(), Box<dyn Error>> {
     };
 
     sdl2_runner::run(Cpu::new(), |cpu, ui| {
-        if app.running {
-            for _ in 0..app.speed {
-                cpu.step();
-            }
-        }
-
         ui.main_menu_bar(|| {
             ui.menu(imgui::im_str!("App"), true, || {
                 ui.checkbox(imgui::im_str!("Display"), &mut app.display);
@@ -66,22 +58,11 @@ fn run() -> Result<(), Box<dyn Error>> {
                 ui.checkbox(imgui::im_str!("Debug"), &mut app.debug);
                 ui.checkbox(imgui::im_str!("Registers"), &mut app.registers);
             });
-            ui.menu(imgui::im_str!("Chip-8"), true, || {
-                let mut speed = app.speed as _;
-                ui.checkbox(imgui::im_str!("Running"), &mut app.running);
-                ui.input_int(imgui::im_str!("Speed"), &mut speed)
-                    .step(1)
-                    .build();
-                app.speed = speed as _;
-            });
             ui.menu(imgui::im_str!("Rom"), true, || {
-                if ui.small_button(imgui::im_str!("Load")) {
+                if MenuItem::new(imgui::im_str!("Load")).build(ui) {
                     cpu.load(&program);
                 }
-                if ui.small_button(imgui::im_str!("Halt")) {
-                    cpu.halt();
-                }
-                if ui.small_button(imgui::im_str!("Reset")) {
+                if MenuItem::new(imgui::im_str!("Reset")).build(ui) {
                     cpu.reset();
                 }
             });
@@ -105,10 +86,8 @@ fn run() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn load_program() -> io::Result<Box<[u8]>> {
-    let opts = Opts::from_args();
-
-    let mut rom: Box<dyn Read> = match opts.rom {
+fn load_program(path: &Option<String>) -> io::Result<Box<[u8]>> {
+    let mut rom: Box<dyn Read> = match path {
         None => {
             info!("read ROM from STDIN");
             Box::new(io::stdin())
