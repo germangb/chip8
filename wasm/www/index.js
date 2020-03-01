@@ -26,12 +26,16 @@ const updateSound = () => {
     }
 }
 
+const timerLoop = () => {
+    updateSound()
+    requestAnimationFrame(timerLoop)
+}
+
 const renderLoop = () => {
     for (let i = 0; i < speed; ++i) {
         cpu.step()
     }
     cpu.update_timers()
-    updateSound()
     drawDisplay()
     requestAnimationFrame(renderLoop)
 }
@@ -52,5 +56,6 @@ const drawDisplay = () => {
 }
 
 requestAnimationFrame(renderLoop);
+requestAnimationFrame(timerLoop);
 
 

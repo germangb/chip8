@@ -7,7 +7,6 @@ use std::{error::Error, ffi::CStr, ptr};
 
 const SAMPLE_RATE: i32 = 44100;
 const MAX_FREQ: i32 = 2000;
-const MIN_SOUND_TIMER: usize = 3;
 
 struct Wave {
     rate: i32,
@@ -90,9 +89,6 @@ where
         gl::BindTexture(gl::TEXTURE_2D, 0);
     }
 
-    // to play sound a minimum amount of time
-    let mut sound_timer = 0;
-
     app.run(|ui| {
         for _ in 0..opts.clock {
             cpu.step();
@@ -103,19 +99,12 @@ where
         if let Some(device) = &device {
             let st = cpu.sound_timer();
             match (st, device.status()) {
-                (0, AudioStatus::Playing) if sound_timer == 0 => device.pause(),
-                (_, AudioStatus::Paused) | (_, AudioStatus::Stopped) => {
-                    if st > 0 {
-                        device.resume();
-                        sound_timer = MIN_SOUND_TIMER;
-                    }
+                (0, AudioStatus::Playing) => device.pause(),
+                (_, AudioStatus::Paused) | (_, AudioStatus::Stopped) if st > 0 => {
+                    device.resume();
                 }
                 _ => {}
             }
-        }
-
-        if sound_timer > 0 {
-            sound_timer -= 1;
         }
 
         // update texture

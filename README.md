@@ -20,8 +20,8 @@ In order to run the development server:
 
 ```bash
 $ cd wasm
-$ wasm-pack build               # this will create a pkg directory with the npm module
-$ cd www                        # navigate to the webapp
+$ wasm-pack build               # run this whenever there's a change in the rust project
+$ cd www                        # navigate to the webapp directory
 $ npm install && npm run start  # start serving on http://localhost:8080/
 ```
 
