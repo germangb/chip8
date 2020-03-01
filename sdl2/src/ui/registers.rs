@@ -1,4 +1,4 @@
-use crate::cpu::Cpu;
+use chip8::cpu::Cpu;
 use imgui::{im_str, Ui, Window};
 
 pub fn draw(ui: &Ui, cpu: &mut Cpu) {

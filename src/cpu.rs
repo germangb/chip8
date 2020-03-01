@@ -1,4 +1,3 @@
-use log::info;
 pub use opcode::Opcode;
 use std::io;
 
@@ -212,10 +211,7 @@ impl Cpu {
 
     fn execute(&mut self, instruction: Opcode) {
         match instruction {
-            Opcode::SYS_addr(_addr) => {
-                //
-                info!("SYS instruction ignored");
-            }
+            Opcode::SYS_addr(_addr) => unimplemented!(),
             Opcode::CLS => self.clear_display(),
             Opcode::RET => {
                 self.pc = self.stack[self.sp] as usize;

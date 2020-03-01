@@ -1,33 +1,31 @@
-# chip8 interpreter
+# CHIP-8 interpreter
 
-A [**chip8**](https://en.wikipedia.org/wiki/CHIP-8) interpreter in Rust, with some debug features.
+A [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) interpreter in rust, with some debug features.
 
-## Running
+## Native
 
-Set up the stable Rust toolchain and all that.
+Running the SDL-based interpreter:
 
 ```bash
-RUST_LOG=trace cargo run -- --rom <rom_path>
+$ RUST_LOG=trace cargo run --package chip8-sdl2 -- --rom "<rom_path>"
 ```
 
-## Help
+## WebAssembly
 
-```
-chip8 0.1.0
-Program arguments
+The WebAssembly version of the crate (located under `wasm`) is limited to a limited number of ROMS.
 
-USAGE:
-    chip8 [FLAGS] [OPTIONS]
+In order to run the development server:
 
-FLAGS:
-    -h, --help       Prints help information
-        --nosound    Disable sound
-    -V, --version    Prints version information
-
-OPTIONS:
-    -f, --freq <beep-freq>    Sound frequency [default: 500]
-    -c, --clock <clock>       Steps per clock cycle [default: 1]
-    -r, --rom <rom>           Rom location
+```bash
+$ cd wasm
+$ wasm-pack build   # this will create a pkg directory with the npm module
+$ cd www            # navigate to the webapp
+$ npm run start     # start the development server on http://localhost:8080/
 ```
 
-![](assets/window.gif)
+To deploy the web app, run `npm run build` from the `www` directory and deploy the contents of the generated `dist` directory.
+
+## Links
+
+* https://rustwasm.github.io/docs/book/
+* https://github.com/rustwasm/wasm-pack

@@ -3,7 +3,8 @@
 #![deny(unused_must_use)]
 #![deny(unused_variables)]
 #![deny(unused_mut)]
-use crate::{cpu::Cpu, opts::Opts};
+use crate::opts::Opts;
+use chip8::cpu::Cpu;
 use log::{error, info, warn};
 use std::{
     error::Error,
@@ -11,7 +12,6 @@ use std::{
     io::{self, Read},
 };
 
-mod cpu;
 mod opts;
 mod sdl2_runner;
 mod ui;
