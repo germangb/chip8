@@ -286,7 +286,7 @@ impl Cpu {
             }
             Opcode::LD_I_addr(addr) => self.i = addr as u16,
             Opcode::JP_V0_addr(addr) => self.pc = addr + self.registers[0x0] as usize - 2,
-            Opcode::RND_Vx_byte(x, b) => self.registers[x] = rand::random::<u8>() & b,
+            Opcode::RND_Vx_byte(x, b) => self.registers[x] = rand_u8() & b,
             Opcode::DRW_Vx_Vy_nibble(x, y, nibble) => self.drw_x_y_nibble(x, y, nibble),
             Opcode::SKP_Vx(x) => {
                 if self.keypad[self.registers[x] as usize] == KeyState::Down {
@@ -354,4 +354,8 @@ impl Cpu {
 
 fn dump(src: &[u8], dst: &mut [u8]) {
     io::copy(&mut io::Cursor::new(src), &mut io::Cursor::new(dst)).expect("Out of bounds");
+}
+
+fn rand_u8() -> u8 {
+    rand::random()
 }
