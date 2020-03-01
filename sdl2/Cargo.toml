@@ -1,5 +1,5 @@
 [package]
-name = "chip8_sdl"
+name = "chip8_frontend_sdl"
 version = "0.1.0"
 authors = ["german gomez <germangb42@gmail.com>"]
 edition = "2018"

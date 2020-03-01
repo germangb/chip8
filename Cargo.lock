@@ -70,7 +70,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "chip8_sdl"
+name = "chip8_frontend_sdl"
 version = "0.1.0"
 dependencies = [
  "chip8",
@@ -87,7 +87,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "chip8_wasm"
+name = "chip8_frontend_wasm"
 version = "0.1.0"
 dependencies = [
  "chip8",
