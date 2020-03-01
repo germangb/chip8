@@ -1,6 +1,9 @@
 use chip8::cpu::PixelState;
 use wasm_bindgen::prelude::*;
 
+#[global_allocator]
+static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
+
 const DEMO: &[u8] = include_bytes!("../../roms/Trip8 Demo (2008) [Revival Studios].ch8");
 const PONG: &[u8] = include_bytes!("../../roms/Pong (1 player).ch8");
 
