@@ -4,30 +4,16 @@ A [**chip8**](https://en.wikipedia.org/wiki/CHIP-8) interpreter in Rust, with so
 
 ## Running
 
-Set up the stable Rust toolchain and all that.
+### Native
+
+In order to run the interpreter using SDL, run the following on your shell from the root of the repository:
 
 ```bash
-RUST_LOG=trace cargo run -- --rom <rom_path>
+$ RUST_LOG=trace cargo run --package chip8-sdl2 -- --rom "<rom_path>"
 ```
 
-## Help
+### WebAssembly
 
-```
-chip8 0.1.0
-Program arguments
+Directory `wasm/` contains a WASM implementation of the interpreter, which can be viewed in the **[website of this repository](#)**.
 
-USAGE:
-    chip8 [FLAGS] [OPTIONS]
-
-FLAGS:
-    -h, --help       Prints help information
-        --nosound    Disable sound
-    -V, --version    Prints version information
-
-OPTIONS:
-    -f, --freq <beep-freq>    Sound frequency [default: 500]
-    -c, --clock <clock>       Steps per clock cycle [default: 1]
-    -r, --rom <rom>           Rom location
-```
-
-![](assets/window.gif)
+Most of the files were generated from the **[Rust 🦀 and WebAssembly 🕸](https://rustwasm.github.io/docs/book/)** book, and is limited to only a single ROM.
