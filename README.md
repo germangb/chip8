@@ -27,5 +27,6 @@ To deploy the web app, run `npm run build` from the `www` directory and deploy t
 
 ## Links
 
+* https://germangb.github.io/chip8/
 * https://rustwasm.github.io/docs/book/
 * https://github.com/rustwasm/wasm-pack
