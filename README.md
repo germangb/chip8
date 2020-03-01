@@ -20,9 +20,9 @@ In order to run the development server:
 
 ```bash
 $ cd wasm
-$ wasm-pack build   # this will create a pkg directory with the npm module
-$ cd www            # navigate to the webapp
-$ npm run start     # start serving on http://localhost:8080/
+$ wasm-pack build               # this will create a pkg directory with the npm module
+$ cd www                        # navigate to the webapp
+$ npm install && npm run start  # start serving on http://localhost:8080/
 ```
 
 To deploy the web app, run `npm run build` from the `www` directory and deploy the contents of the generated `dist` directory.
