@@ -1,4 +1,4 @@
-use crate::cpu::{Cpu, Opcode};
+use chip8::cpu::{Cpu, Opcode};
 use imgui::{im_str, Ui, Window};
 use lazy_static::lazy_static;
 use std::sync::Mutex;

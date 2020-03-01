@@ -1,4 +1,4 @@
-use crate::cpu::Cpu;
+use chip8::cpu::Cpu;
 use imgui::{im_str, StyleColor, Ui, Window};
 
 fn byte_color(cpu: &Cpu, addr: u16, byte: u8) -> [f32; 4] {

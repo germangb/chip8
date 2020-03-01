@@ -1,4 +1,5 @@
-use crate::{cpu::Cpu, opts::Opts};
+use crate::opts::Opts;
+use chip8::cpu::Cpu;
 use imgui::{im_str, Ui, Window};
 use log::{error, info};
 use sdl2::audio::{AudioCallback, AudioStatus};
