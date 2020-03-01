@@ -9,12 +9,12 @@ A [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) interpreter in rust, with some 
 Running the SDL-based interpreter:
 
 ```bash
-$ RUST_LOG=trace cargo run --package chip8-sdl2 -- --rom "<rom_path>"
+$ RUST_LOG=trace cargo run --package chip8-sdl -- --rom "<rom_path>"
 ```
 
 ## WebAssembly
 
-The WebAssembly version of the crate (located under `wasm`) is limited to a limited number of ROMS.
+The WebAssembly version (located under `wasm`) is limited to a limited number of ROMS.
 
 In order to run the development server:
 
