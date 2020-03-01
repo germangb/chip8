@@ -1,5 +1,7 @@
 # CHIP-8 interpreter
 
+![](assets/chip8.png)
+
 A [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) interpreter in rust, with some debug features.
 
 ## Native
